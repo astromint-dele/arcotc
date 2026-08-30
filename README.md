@@ -1,6 +1,6 @@
 # ArcOTC — Trustless P2P OTC Escrow on Arc
 
-A non-custodial OTC trading escrow protocol built natively on [Arc](https://arc.network) by Circle. USDC as gas, on-chain settlement, no middleman.
+A non-custodial OTC trading escrow protocol built natively on [Arc](https://arc.network) by Circle. USDC as gas, on-chain settlement, funds locked in a contract rather than held by an operator.
 
 **Live demo:** https://astromint-dele.github.io/arcotc
 
@@ -20,11 +20,27 @@ OTC trades happen daily on pure trust — someone sends first and hopes the othe
 ## Contract Features
 
 - **Multi-trade** — one contract handles unlimited simultaneous trades, each with a unique ID
-- **Timelock** — every trade has a deadline, arbiter must act before expiry
-- **Dispute system** — either party can flag a trade for arbiter review
-- **Expired refund** — anyone can trigger a refund after deadline, no arbiter needed
-- **Fee capture** — 0.5% deducted on every release, sent to protocol wallet automatically
-- **Fully on-chain** — no backend, no custodian, every action verifiable on explorer
+- **Timelock** — every trade has a deadline, with a minimum lock duration of 1 hour
+- **Expired refund** — after the deadline plus a 24-hour grace period, anyone can trigger a refund to the buyer. No arbiter needed
+- **Dispute freeze** — either party can dispute a trade, which blocks expired refund and restricts settlement to the arbiter
+- **Fee capture** — 0.5% deducted on every release, sent to the protocol wallet automatically
+- **Fully on-chain** — no backend, no custodian, every action verifiable on the explorer
+
+## Trust Model
+
+Read this before using the contract with real funds.
+
+On the happy path — deposit, deliver, release — no third party can touch the funds. If the buyer stalls, the expired refund path returns their USDC without anyone's cooperation.
+
+Once either party calls `dispute()`, that changes. A disputed trade can only be settled by the arbiter, in either direction, with no time limit and no fallback. The arbiter is a single address set at deployment, identical for every trade, with no rotation path. Either party can force a trade into this state at will.
+
+Two consequences follow. The arbiter has standing authority over any contested trade for as long as it stays open. And if the arbiter key is lost or its holder never acts, a disputed trade's funds cannot be moved by any function in the contract.
+
+This is deliberate — it's what stops a buyer from taking delivery and then reclaiming payment — but it means the protocol is trustless on the happy path and arbiter-dependent under dispute.
+
+## Status
+
+Deployed on Arc testnet only. **Unaudited.** Do not use with funds you can't afford to lose.
 
 ## Deployed Contracts (Arc Testnet)
 

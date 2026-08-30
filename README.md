@@ -56,7 +56,7 @@ Testnet builder wallet: `0x30A29b88f86001ecb8ec9FB552a558b7eE56D9D0`
 ## On-Chain Activity
 
 - 4 contracts deployed across two versions
-- 62 completed escrow cycles
+- 56 settled trades on the v1 contract (of 64 created — 8 were never deposited into)
 - Continuous activity since June 2026
 
 ## Tech Stack
@@ -74,10 +74,11 @@ cd arcotc
 npm install
 ```
 
-Add your private key to `hardhat.config.ts` under `networks.arc.accounts`. Use a dedicated testnet wallet — never a wallet holding real funds.
+Copy `.env.example` to `.env` and set `ARC_PRIVATE_KEY` to a dedicated testnet wallet's private key — never a wallet holding real funds. `hardhat.config.ts` reads it via Hardhat's `configVariable()`; the key itself never goes in a tracked file.
 
 ```bash
 npx hardhat compile
+npx hardhat test
 npx hardhat run scripts/deploy.ts
 npx hardhat run scripts/interact.ts
 ```

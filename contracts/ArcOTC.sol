@@ -16,6 +16,17 @@ contract ArcOTC {
     IERC20 public usdc;
     uint256 public tradeCount;
 
+    // Floor on createTrade's _lockDuration. Blocks a buyer from setting a
+    // near-zero deadline so the trade sits in "expired" state (and grief
+    // tooling below applies) almost immediately after deposit.
+    uint256 public constant MIN_LOCK_DURATION = 1 hours;
+
+    // Delay after deadline before expiredRefund() becomes callable. Gives a
+    // seller who delivered off-chain, but whose buyer is stalling on
+    // release(), a window to call dispute() before the buyer can self-serve
+    // a refund and keep both the goods and the payment.
+    uint256 public constant EXPIRED_REFUND_GRACE_PERIOD = 24 hours;
+
     struct Trade {
         uint256 id;
         address buyer;
@@ -68,8 +79,9 @@ contract ArcOTC {
         string calldata _description
     ) external returns (uint256) {
         require(_amount > 0, "Amount must be > 0");
+        require(_seller != address(0), "Seller cannot be zero address");
         require(_seller != msg.sender, "Buyer cannot be seller");
-        require(_lockDuration > 0, "Duration must be > 0");
+        require(_lockDuration >= MIN_LOCK_DURATION, "Lock duration too short");
 
         uint256 id = tradeCount;
 
@@ -113,7 +125,8 @@ contract ArcOTC {
         require(msg.sender == t.buyer || msg.sender == t.arbiter, "Not authorized");
         require(t.isDeposited, "Nothing deposited");
         require(!t.isReleased && !t.isRefunded, "Already settled");
-        require(block.timestamp <= t.deadline, "Trade expired");
+        require(!t.isDisputed || msg.sender == t.arbiter, "Disputed: arbiter only");
+        require(msg.sender == t.arbiter || block.timestamp <= t.deadline, "Trade expired");
 
         t.isReleased = true;
 
@@ -157,12 +170,13 @@ contract ArcOTC {
         emit Disputed(_id, msg.sender);
     }
 
-    // --- Expired refund (anyone can trigger after deadline) ---
+    // --- Expired refund (anyone can trigger after deadline + grace period) ---
     function expiredRefund(uint256 _id) external tradeExists(_id) {
         Trade storage t = trades[_id];
         require(t.isDeposited, "Nothing deposited");
         require(!t.isReleased && !t.isRefunded, "Already settled");
-        require(block.timestamp > t.deadline, "Not expired yet");
+        require(!t.isDisputed, "Disputed: arbiter must resolve");
+        require(block.timestamp > t.deadline + EXPIRED_REFUND_GRACE_PERIOD, "Grace period active");
 
         t.isRefunded = true;
         bool success = usdc.transfer(t.buyer, t.amount);

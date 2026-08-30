@@ -1,10 +1,12 @@
 # ArcOTC — Trustless P2P OTC Escrow on Arc
 
-A non-custodial OTC trading escrow protocol built natively on [Arc testnet](https://arc.network) by Circle. USDC as gas, on-chain settlement, no middleman.
+A non-custodial OTC trading escrow protocol built natively on [Arc](https://arc.network) by Circle. USDC as gas, on-chain settlement, no middleman.
+
+**Live demo:** https://astromint-dele.github.io/arcotc
 
 ## The Problem
 
-OTC trades on CT happen daily on pure trust — someone sends first and hopes the other side delivers. Rugs happen constantly. ArcOTC removes the trust requirement entirely by locking funds in a smart contract until both parties confirm.
+OTC trades happen daily on pure trust — someone sends first and hopes the other side delivers. Rugs happen constantly. ArcOTC removes the trust requirement by locking funds in a smart contract until both parties confirm.
 
 ## How It Works
 
@@ -29,37 +31,49 @@ OTC trades on CT happen daily on pure trust — someone sends first and hopes th
 | Contract | Address |
 |---|---|
 | ArcOTC v1 (multi-trade + fee capture) | `0x37530FaE4a39685738113138a84BC9e5a7270C7F` |
-| Escrow v2 (timelock + random amounts) | `0x006F859ca97EcA0EFB3395568d032270b18ad85E` |
+| Escrow v2 (timelock) | `0x006F859ca97EcA0EFB3395568d032270b18ad85E` |
 
 Explorer: [testnet.arcscan.app](https://testnet.arcscan.app)
 
-Builder wallet: `0x30A29b88f86001ecb8ec9FB552a558b7eE56D9D0`
+Testnet builder wallet: `0x30A29b88f86001ecb8ec9FB552a558b7eE56D9D0`
+
+## On-Chain Activity
+
+- 4 contracts deployed across two versions
+- 62 completed escrow cycles
+- Continuous activity since June 2026
 
 ## Tech Stack
 
-- **Smart contracts** — Solidity 0.8.20
-- **Deploy tooling** — Hardhat 3 + ethers.js
-- **Network** — Arc testnet (Chain ID: 5042002)
+- **Contracts** — Solidity 0.8.20
+- **Tooling** — Hardhat 3 + ethers.js
+- **Network** — Arc testnet (Chain ID 5042002)
 - **Gas token** — USDC (`0x3600000000000000000000000000000000000000`)
+
+## Getting Started
+
+```bash
+git clone https://github.com/astromint-dele/arcotc.git
+cd arcotc
+npm install
+```
+
+Add your private key to `hardhat.config.ts` under `networks.arc.accounts`. Use a dedicated testnet wallet — never a wallet holding real funds.
+
+```bash
+npx hardhat compile
+npx hardhat run scripts/deploy.ts
+npx hardhat run scripts/interact.ts
+```
 
 ## Roadmap
 
-- [x] Single escrow contract
-- [x] Multi-trade architecture
-- [x] Timelock + expired refund
-- [x] Dispute system
+- [x] Multi-trade architecture with timelock and dispute logic
 - [x] Fee capture (0.5%)
-- [ ] Telegram bot — OTC conversation layer
-- [ ] Web wallet connect page — non-custodial user flow
-- [ ] Arbiter dashboard
-- [ ] Mainnet deployment
+- [x] Web interface with wallet connect
+- [ ] Marketplace and on-site trade chat
+- [ ] Mainnet deployment (Arc public mainnet: September 16, 2026)
 
-## Use Cases
+## License
 
-- Token allocation OTC trades
-- NFT peer-to-peer deals
-- Whitelist spot sales
-- Private round settlements
-- Any P2P deal requiring trustless settlement
-
-*Built on Arc. Settled on-chain. No trust required.*
+MIT

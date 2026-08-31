@@ -443,6 +443,125 @@
   .toast.error   { border-color: var(--red);   color: var(--red); }
   .toast.info    { border-color: var(--cyan);   color: var(--cyan); }
 
+  /* WALLET BALANCE */
+  .balance-chip {
+    display: none;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text);
+    background: var(--bg2);
+    cursor: help;
+  }
+
+  .balance-chip b { color: var(--cyan); font-weight: 700; margin-right: 4px; }
+
+  /* SECONDARY BUTTON (modal cancel, reversible actions) */
+  .btn-secondary { background: var(--bg2); border: 1px solid var(--border); color: var(--text); }
+  .btn-secondary:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+
+  /* MODAL */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(4,7,15,0.75);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .modal-backdrop.show { display: flex; }
+
+  .modal-box {
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    max-width: 420px;
+    width: 100%;
+    padding: 24px;
+  }
+
+  .modal-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+  }
+
+  .modal-title-danger { color: var(--red); }
+
+  .modal-body { margin-bottom: 16px; }
+
+  .modal-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+
+  .modal-row:last-child { border-bottom: none; }
+
+  .modal-row > span:first-child {
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .modal-val {
+    color: var(--text);
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    word-break: break-all;
+  }
+
+  .modal-val-cyan { color: var(--cyan); font-weight: 700; }
+
+  .modal-note, .modal-warning {
+    font-size: 12px;
+    line-height: 1.6;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .modal-note {
+    color: var(--muted);
+    background: var(--bg2);
+    border: 1px solid var(--border);
+  }
+
+  .modal-warning {
+    color: var(--red);
+    background: rgba(255,107,107,0.08);
+    border: 1px solid rgba(255,107,107,0.3);
+  }
+
+  .modal-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .modal-checkbox input { width: auto; accent-color: var(--red); cursor: pointer; }
+
   @media (max-width: 640px) {
     .panels { grid-template-columns: 1fr; }
     .stats  { grid-template-columns: 1fr 1fr; }
@@ -458,6 +577,7 @@
   <div class="logo">Arc<span>OTC</span></div>
   <div class="nav-right">
     <div class="net-badge"><span class="net-dot"></span>Arc Testnet</div>
+    <div class="balance-chip" id="wallet-balance" title="USDC is Arc's gas token — this is both your spending balance and what pays for gas"><b id="wallet-balance-val">0.00</b> USDC</div>
     <button id="connect-btn" onclick="connectWallet()">Connect Wallet</button>
   </div>
 </nav>
@@ -486,7 +606,7 @@
     <div class="stat">
       <div class="stat-label">Total Trades</div>
       <div class="stat-val" id="stat-trades">—</div>
-      <div class="stat-sub">on-chain</div>
+      <div class="stat-sub">on-chain · v1 + v2</div>
     </div>
     <div class="stat">
       <div class="stat-label">Contract</div>
@@ -628,9 +748,50 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- DEPOSIT CONFIRM MODAL -->
+<div class="modal-backdrop" id="deposit-modal" onclick="if(event.target===this) closeDepositModal()">
+  <div class="modal-box">
+    <div class="modal-title">Confirm Deposit</div>
+    <div class="modal-body">
+      <div class="modal-row"><span>Amount</span><span class="modal-val modal-val-cyan" id="dm-amount"></span></div>
+      <div class="modal-row"><span>Seller</span><span class="modal-val" id="dm-seller"></span></div>
+      <div class="modal-row"><span>Description</span><span class="modal-val" id="dm-desc"></span></div>
+      <div class="modal-row"><span>Deadline</span><span class="modal-val" id="dm-deadline"></span></div>
+    </div>
+    <div class="modal-note">Funds lock in the contract on deposit. If the seller doesn't deliver, you can reclaim them yourself once the deadline passes and the grace period expires — no arbiter needed.</div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="closeDepositModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmDeposit()">Confirm Deposit</button>
+    </div>
+  </div>
+</div>
+
+<!-- RELEASE CONFIRM MODAL -->
+<div class="modal-backdrop" id="release-modal" onclick="if(event.target===this) closeReleaseModal()">
+  <div class="modal-box">
+    <div class="modal-title modal-title-danger">⚠ Confirm Release</div>
+    <div class="modal-body">
+      <div class="modal-row"><span>Seller receives</span><span class="modal-val modal-val-cyan" id="rm-payout"></span></div>
+      <div class="modal-row"><span>Protocol fee</span><span class="modal-val" id="rm-fee"></span></div>
+      <div class="modal-row"><span>Seller address</span><span class="modal-val" id="rm-seller"></span></div>
+      <div class="modal-row"><span>Description</span><span class="modal-val" id="rm-desc"></span></div>
+    </div>
+    <div class="modal-warning">This is irreversible. Once released, funds go straight to the seller and cannot be recovered, reversed, or refunded by anyone — not even the arbiter. Only release after you've actually received what you paid for.</div>
+    <label class="modal-checkbox">
+      <input type="checkbox" id="rm-checkbox" onchange="document.getElementById('rm-confirm-btn').disabled = !this.checked">
+      I have received what I paid for
+    </label>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-success" onclick="closeReleaseModal()">Cancel</button>
+      <button class="btn btn-danger" id="rm-confirm-btn" disabled onclick="confirmRelease()">Release Funds</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
 <script>
-const CONTRACT_ADDRESS = "0x5522F89478F9dF853D1D7913828558aC5E16A5c3";
+const CONTRACT_ADDRESS = "0x5522F89478F9dF853D1D7913828558aC5E16A5c3"; // v2 — all writes go here
+const LEGACY_ADDRESS   = "0x37530FaE4a39685738113138a84BC9e5a7270C7F"; // v1 — read-only, stats total only
 const USDC_ADDRESS     = "0x3600000000000000000000000000000000000000";
 const ARC_CHAIN_ID     = 5042002;
 const ARC_RPC          = "https://arc-testnet.drpc.org";
@@ -645,6 +806,7 @@ const ABI = [
   "function getTrade(uint256 _id) external view returns (tuple(uint256 id, address buyer, address seller, address arbiter, uint256 amount, uint256 deadline, bool isDeposited, bool isReleased, bool isRefunded, bool isDisputed, string description))",
   "function tradeCount() external view returns (uint256)",
   "function contractBalance() external view returns (uint256)",
+  "function feeBps() external view returns (uint256)",
 ];
 
 const USDC_ABI = [
@@ -740,6 +902,7 @@ async function connectWallet() {
 
     await loadStats();
     await loadRecentTrades();
+    await refreshWalletBalance();
 
     toast('Wallet connected ✓', 'success');
   } catch (e) {
@@ -749,12 +912,30 @@ async function connectWallet() {
 }
 
 // ─── STATS ───────────────────────────────────────────────
+async function loadTotalTradeCount() {
+  const readProvider = new ethers.JsonRpcProvider(ARC_RPC);
+  const v2 = new ethers.Contract(CONTRACT_ADDRESS, ABI, readProvider);
+  const v1 = new ethers.Contract(LEGACY_ADDRESS, ABI, readProvider);
+  const [v2Count, v1Count] = await Promise.all([v2.tradeCount(), v1.tradeCount()]);
+  return v2Count + v1Count;
+}
+
 async function loadStats() {
   try {
-    const readProvider = new ethers.JsonRpcProvider(ARC_RPC);
-    const readContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, readProvider);
-    const count = await readContract.tradeCount();
-    document.getElementById('stat-trades').textContent = count.toString();
+    const total = await loadTotalTradeCount();
+    document.getElementById('stat-trades').textContent = total.toString();
+  } catch(e) {}
+}
+
+// ─── WALLET BALANCE ──────────────────────────────────────
+// USDC is Arc's gas token, so this is both spending power and gas —
+// refresh after every tx, not just ones that move trade funds.
+async function refreshWalletBalance() {
+  if (!userAddress || !usdcContract) return;
+  try {
+    const raw = await usdcContract.balanceOf(userAddress);
+    document.getElementById('wallet-balance-val').textContent = (Number(raw) / 1e6).toFixed(2);
+    document.getElementById('wallet-balance').style.display = 'flex';
   } catch(e) {}
 }
 
@@ -815,6 +996,7 @@ async function createTrade() {
     toast('Trade created ✓', 'success');
     await loadStats();
     await loadRecentTrades();
+    await refreshWalletBalance();
   } catch(e) {
     log('// error: ' + (e.reason || e.message), 'log-red');
     toast('Error: ' + (e.reason || e.message).slice(0, 60), 'error');
@@ -847,10 +1029,37 @@ async function lookupTrade() {
 }
 
 // ─── DEPOSIT ──────────────────────────────────────────────
+let pendingDepositId = null;
+
 async function depositToTrade() {
   if (!signer) { toast('Connect wallet first', 'error'); return; }
   const id = document.getElementById('trade-id').value;
   if (id === '') { toast('Enter a trade ID', 'error'); return; }
+  try {
+    const readProvider = new ethers.JsonRpcProvider(ARC_RPC);
+    const readContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, readProvider);
+    const t = await readContract.getTrade(id);
+
+    pendingDepositId = id;
+    document.getElementById('dm-amount').textContent   = formatUSDC(t.amount);
+    document.getElementById('dm-seller').textContent   = t.seller;
+    document.getElementById('dm-desc').textContent     = t.description || '—';
+    document.getElementById('dm-deadline').textContent = new Date(Number(t.deadline) * 1000).toLocaleString();
+    document.getElementById('deposit-modal').classList.add('show');
+  } catch(e) {
+    toast('Could not load trade: ' + (e.reason || e.message).slice(0, 60), 'error');
+  }
+}
+
+function closeDepositModal() {
+  document.getElementById('deposit-modal').classList.remove('show');
+  pendingDepositId = null;
+}
+
+async function confirmDeposit() {
+  const id = pendingDepositId;
+  closeDepositModal();
+  if (id === null) return;
   try {
     const readProvider = new ethers.JsonRpcProvider(ARC_RPC);
     const readContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, readProvider);
@@ -868,6 +1077,7 @@ async function depositToTrade() {
     log(`// ✓ deposited ${formatUSDC(amount)} · tx: <span class="log-muted">${tx.hash.slice(0,20)}...</span>`, 'log-green');
     toast('Deposited ✓', 'success');
     await loadRecentTrades();
+    await refreshWalletBalance();
   } catch(e) {
     log('// error: ' + (e.reason || e.message), 'log-red');
     toast('Error: ' + (e.reason || e.message).slice(0, 60), 'error');
@@ -875,10 +1085,41 @@ async function depositToTrade() {
 }
 
 // ─── RELEASE ──────────────────────────────────────────────
+let pendingReleaseId = null;
+
 async function releaseTrade() {
   if (!signer) { toast('Connect wallet first', 'error'); return; }
   const id = document.getElementById('trade-id').value;
   if (id === '') { toast('Enter a trade ID', 'error'); return; }
+  try {
+    const readProvider = new ethers.JsonRpcProvider(ARC_RPC);
+    const readContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, readProvider);
+    const [t, feeBps] = await Promise.all([readContract.getTrade(id), readContract.feeBps()]);
+    const fee    = (t.amount * feeBps) / 10000n;
+    const payout = t.amount - fee;
+
+    pendingReleaseId = id;
+    document.getElementById('rm-payout').textContent = formatUSDC(payout);
+    document.getElementById('rm-fee').textContent     = formatUSDC(fee) + ` (${(Number(feeBps) / 100).toFixed(2)}%)`;
+    document.getElementById('rm-seller').textContent  = t.seller;
+    document.getElementById('rm-desc').textContent    = t.description || '—';
+    document.getElementById('rm-checkbox').checked    = false;
+    document.getElementById('rm-confirm-btn').disabled = true;
+    document.getElementById('release-modal').classList.add('show');
+  } catch(e) {
+    toast('Could not load trade: ' + (e.reason || e.message).slice(0, 60), 'error');
+  }
+}
+
+function closeReleaseModal() {
+  document.getElementById('release-modal').classList.remove('show');
+  pendingReleaseId = null;
+}
+
+async function confirmRelease() {
+  const id = pendingReleaseId;
+  closeReleaseModal();
+  if (id === null) return;
   try {
     log(`// releasing trade #${id}...`, 'log-cyan');
     const tx = await contract.release(id);
@@ -886,6 +1127,7 @@ async function releaseTrade() {
     log(`// ✓ released · tx: <span class="log-muted">${tx.hash.slice(0,20)}...</span>`, 'log-green');
     toast('Released ✓', 'success');
     await loadRecentTrades();
+    await refreshWalletBalance();
   } catch(e) {
     log('// error: ' + (e.reason || e.message), 'log-red');
     toast('Error: ' + (e.reason || e.message).slice(0, 60), 'error');
@@ -904,6 +1146,7 @@ async function refundTrade() {
     log(`// ✓ refunded · tx: <span class="log-muted">${tx.hash.slice(0,20)}...</span>`, 'log-green');
     toast('Refunded ✓', 'success');
     await loadRecentTrades();
+    await refreshWalletBalance();
   } catch(e) {
     log('// error: ' + (e.reason || e.message), 'log-red');
     toast('Error: ' + (e.reason || e.message).slice(0, 60), 'error');
@@ -922,6 +1165,7 @@ async function disputeTrade() {
     log(`// ✓ dispute raised`, 'log-green');
     toast('Dispute raised ✓', 'success');
     await loadRecentTrades();
+    await refreshWalletBalance();
   } catch(e) {
     log('// error: ' + (e.reason || e.message), 'log-red');
     toast('Error: ' + (e.reason || e.message).slice(0, 60), 'error');
@@ -931,12 +1175,18 @@ async function disputeTrade() {
 // Load stats on page load without wallet
 (async () => {
   try {
-    const rp = new ethers.JsonRpcProvider(ARC_RPC);
-    const rc = new ethers.Contract(CONTRACT_ADDRESS, ABI, rp);
-    const count = await rc.tradeCount();
-    document.getElementById('stat-trades').textContent = count.toString();
+    const total = await loadTotalTradeCount();
+    document.getElementById('stat-trades').textContent = total.toString();
   } catch(e) {}
 })();
+
+// Escape dismisses whichever confirm modal is open
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeDepositModal();
+    closeReleaseModal();
+  }
+});
 </script>
 </body>
 </html>

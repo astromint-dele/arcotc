@@ -1,0 +1,21 @@
+# Only index.html should ever be served. Everything below is Hardhat/repo
+# tooling that has no business being uploaded to Vercel.
+
+.env
+.env.example
+hardhat.config.ts
+
+node_modules
+artifacts
+cache
+contracts
+scripts
+test
+
+package.json
+package-lock.json
+tsconfig.json
+makefiles.cjs
+README.md
+
+.git

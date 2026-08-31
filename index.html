@@ -578,7 +578,7 @@
   <div class="nav-right">
     <div class="net-badge"><span class="net-dot"></span>Arc Testnet</div>
     <div class="balance-chip" id="wallet-balance" title="USDC is Arc's gas token — this is both your spending balance and what pays for gas"><b id="wallet-balance-val">0.00</b> USDC</div>
-    <button id="connect-btn" onclick="connectWallet()">Connect Wallet</button>
+    <button id="connect-btn" onclick="walletButtonClick()">Connect Wallet</button>
   </div>
 </nav>
 
@@ -894,6 +894,7 @@ async function connectWallet() {
     const btn = document.getElementById('connect-btn');
     btn.textContent = shortAddr(userAddress);
     btn.classList.add('connected');
+    btn.title = 'Click to disconnect';
 
     document.getElementById('gate-view').style.display = 'none';
     document.getElementById('main-view').style.display = 'block';
@@ -909,6 +910,35 @@ async function connectWallet() {
     toast('Connection failed: ' + (e.message || e), 'error');
     log('// connection error: ' + e.message, 'log-red');
   }
+}
+
+// Nav button does double duty: connect when disconnected, disconnect when connected.
+function walletButtonClick() {
+  if (signer) {
+    disconnectWallet();
+  } else {
+    connectWallet();
+  }
+}
+
+function disconnectWallet() {
+  provider = null;
+  signer = null;
+  contract = null;
+  usdcContract = null;
+  userAddress = null;
+
+  const btn = document.getElementById('connect-btn');
+  btn.textContent = 'Connect Wallet';
+  btn.classList.remove('connected');
+  btn.title = '';
+
+  document.getElementById('wallet-balance').style.display = 'none';
+  document.getElementById('gate-view').style.display = '';
+  document.getElementById('main-view').style.display = 'none';
+
+  log('// wallet disconnected', 'log-muted');
+  toast('Wallet disconnected', 'info');
 }
 
 // ─── STATS ───────────────────────────────────────────────
